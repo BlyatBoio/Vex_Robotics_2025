@@ -19,6 +19,10 @@ class ControllerProfile:
         self.driveMode = "arcade" # Arcade or Tank
         self.telemetryLables = [];
         self.telemetrySuppliers = [];
+        self.rumbleConditions = [];
+        self.conditionalTelemetrySuppliers = [];
+        self.conditionalTelemetryLables = [];
+        self.conditionalTelemetryTriggers = [];
 
     # Set drive mode to either Arcade or tank
     def setDriveMode(self, mode):
@@ -27,12 +31,37 @@ class ControllerProfile:
 
     # Bind the left or directional movement axis
     def bindAxisOne(self, axis):
-        self.rightAxis = lambda: axis.position()
+        self.leftAxis = lambda: axis.position()
         return self
     
     # Bind the right or turning movement axis
     def bindAxisTwo(self, axis):
-        self.leftAxis = lambda: axis.position()
+        self.rightAxis = lambda: axis.position()
+        return self
+    
+    def addRumbleCondition(self, condition, pattern, duration=200):
+        self.rumbleConditions.append([condition, pattern, duration])
+        return self
+    
+    def checkRumbleConditions(self):
+        for condition in self.rumbleConditions:
+            if(condition[0]()):
+                self.controller.rumble(condition[1])
+        return self
+    
+    def addConditionalTelemetry(self, label, condition, valueSupplier=lambda: ""):
+        self.conditionalTelemetryLables.append(label)
+        self.conditionalTelemetrySuppliers.append(valueSupplier)
+        self.conditionalTelemetryTriggers.append(condition)
+        return self
+    
+    def checkConditionalTelemetry(self):
+        totalConditionsDrawn = 0;
+        for i in range(len(self.conditionalTelemetryTriggers)):
+            if(self.conditionalTelemetryTriggers[i]()):
+                totalConditionsDrawn += 1
+                self.controller.screen.set_cursor(len(self.telemetryLables)+totalConditionsDrawn, 1)
+                self.controller.screen.print(self.conditionalTelemetryLables[i] + " " + str(self.conditionalTelemetrySuppliers[i]()))
         return self
     
     # Add a telemetry label and a supplier function to get the value
@@ -88,7 +117,10 @@ class DriveContoller:
         self.robotController = robotController
     
     def update(self):
+        self.controllerProfile.controller.screen.clear_screen() # Clear the controller screen
         self.controllerProfile.displayTelemetry() # Update telemetry display
+        self.controllerProfile.checkRumbleConditions() # Check rumble conditions
+        self.controllerProfile.checkConditionalTelemetry() # Check conditional telemetry
         
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
@@ -117,6 +149,27 @@ class DriveContoller:
             self.robotController.driveLeftWheel(abs(leftSpeed), leftDirection)
             self.robotController.driveRightWheel(abs(rightSpeed), rightDirection)
 
+# Helper class to manage and display cortex telemetry
+class CortexTelemetry:
+    def __init__(self):
+        self.telemetryLables = []
+        self.telemetrySuppliers = []
+ 
+    def addCortexBattery(self):
+        self.telemetryLables.append("Cortex Battery:")
+        self.telemetrySuppliers.append(lambda: brain.battery.capacity())
+        return self
+ 
+    def addMotorTemperature(self, motor, motorName=""):
+        self.telemetryLables.append(motorName + " Temperature:")
+        self.telemetrySuppliers.append(lambda: motor.temperature())
+        return self
+    
+    def displayTelemetry(self, cortex):
+        for i in range(len(self.telemetryLables)):
+            cortex.screen.set_cursor(1+i, 1)
+            cortex.screen.print(self.telemetryLables[i] + " " + str(self.telemetrySuppliers[i]()))
+    
 # Brain should be defined by default
 brain = Brain()
 
@@ -124,16 +177,18 @@ brain = Brain()
 controller = Controller(PRIMARY);
 
 # define controller profiles
-stefanProfile = ControllerProfile(controller).setDriveMode("Tank").bindAxisOne(controller.axis2).bindAxisTwo(controller.axis3).addTelemetry("Cortex Battery:", lambda: brain.battery.voltage())
+stefanProfile = ControllerProfile(controller).setDriveMode("Tank").bindAxisOne(controller.axis2).bindAxisTwo(controller.axis3).addTelemetry("Cortex Battery:", lambda: brain.battery.voltage()).addConditionalTelemetry("Button A Pressed", controller.buttonA.pressing).addConditionalTelemetry("Button B Pressed", controller.buttonB.pressing)
 currentProfile = stefanProfile
 
 # initialize helper classes
-robotController =RobotController(RobotProfile(Motor(1), False, Motor(2), False, Motor(3), False, Motor(4), False))
+robotController =RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), False, Motor(3), False, Motor(4), False))
 driveContoller = DriveContoller(currentProfile, robotController)
+cortexTelemetry = CortexTelemetry().addCortexBattery()
 
 controller.screen.clear_screen()
 
 # Main loop
 while True:
     driveContoller.update()
-    wait(20, MSEC)
+    cortexTelemetry.displayTelemetry(brain)
+    wait(120, MSEC)
