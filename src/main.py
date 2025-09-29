@@ -177,11 +177,11 @@ brain = Brain()
 controller = Controller(PRIMARY);
 
 # define controller profiles
-stefanProfile = ControllerProfile(controller).setDriveMode("Tank").bindAxisOne(controller.axis2).bindAxisTwo(controller.axis3).addTelemetry("Cortex Battery:", lambda: brain.battery.voltage()).addConditionalTelemetry("Button A Pressed", controller.buttonA.pressing).addConditionalTelemetry("Button B Pressed", controller.buttonB.pressing)
+stefanProfile = ControllerProfile(controller).setDriveMode("Arcade").bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1).addTelemetry("Cortex Battery:", lambda: brain.battery.voltage()).addConditionalTelemetry("Button A Pressed", controller.buttonA.pressing).addConditionalTelemetry("Button B Pressed", controller.buttonB.pressing)
 currentProfile = stefanProfile
 
 # initialize helper classes
-robotController =RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), False, Motor(3), False, Motor(4), False))
+robotController =RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True, Motor(3), False, Motor(4), False))
 driveContoller = DriveContoller(currentProfile, robotController)
 cortexTelemetry = CortexTelemetry().addCortexBattery()
 
