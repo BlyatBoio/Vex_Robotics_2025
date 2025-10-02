@@ -149,27 +149,37 @@ class DriveContoller:
             self.robotController.driveLeftWheel(abs(leftSpeed), leftDirection)
             self.robotController.driveRightWheel(abs(rightSpeed), rightDirection)
 
+# Class holding an array of AutoCommands that can run through each command sequentially
 class AutoRoutine:
     def __init__(self):
         self.commands = []
         self.currentCommand = 0
         self.isFinishedRunning = False
     
+    # Add an auto command
     def addCommand(self, baseCommand, decorators, duration):
         self.commands.append(AutoCommand(baseCommand, decorators, duration))
         
+    # Itterate over all commands until there are none left, then cancel
+    # If there are no arguments, the auto never cancels as the default after cancel is an empty auto routine
     def runAuto(self, robotController):
+        if len(self.commands) == 0: return
         if not self.isFinishedRunning:
             self.commands[self.currentCommand].run(robotController)
             if self.commands[self.currentCommand].isFinished(): self.currentCommand += 1
             if self.currentCommand > len(self.commands): self.isFinishedRunning = True
         else: self.cancel()
             
+    # Set the current auto routine to itself
     def schedule(self): 
+        global currentAutoRoutine
         currentAutoRoutine = self
+    # Cancel this auto routine and set the auto routine to do nothing
     def cancel(self): 
-        currentAutoRoutine = None
-        
+        global currentAutoRoutine
+        currentAutoRoutine = AutoRoutine()
+ 
+# Class that takes in a base command and decroators and runs said command with said decorators       
 class AutoCommand:
     def __init__(self, baseCommand, decorators, duration):
         self.baseCommand = baseCommand
@@ -177,6 +187,7 @@ class AutoCommand:
         self.duration = duration
         self.runtime = 0;
     
+    # Run the given command
     def run(self, robotController):
         self.runtime += 1
         if self.runtime < self.duration:
@@ -196,6 +207,7 @@ class AutoCommand:
     def isFinished(self):
         return self.runtime > self.duration
 
+# Enum with base commands and decorators for the AutoCommand class
 class AutoCommands:
     DRIVE = "Drive"
     TURN = "Turn"
@@ -240,9 +252,10 @@ robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(
 driveContoller = DriveContoller(currentProfile, robotController)
 cortexTelemetry = CortexTelemetry().addCortexBattery()
 
+currentAutoRoutine = AutoRoutine()
 testAuto = AutoRoutine()
 testAuto.addCommand(AutoCommands.DRIVE, [AutoCommands.DIRECTION_FORWARD], 100)
-currentAutoRoutine = testAuto
+testAuto.schedule()
 
 controller.screen.clear_screen()
 
