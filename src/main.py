@@ -149,6 +149,61 @@ class DriveContoller:
             self.robotController.driveLeftWheel(abs(leftSpeed), leftDirection)
             self.robotController.driveRightWheel(abs(rightSpeed), rightDirection)
 
+class AutoRoutine:
+    def __init__(self):
+        self.commands = []
+        self.currentCommand = 0
+        self.isFinishedRunning = False
+    
+    def addCommand(self, baseCommand, decorators, duration):
+        self.commands.append(AutoCommand(baseCommand, decorators, duration))
+        
+    def runAuto(self, robotController):
+        if not self.isFinishedRunning:
+            self.commands[self.currentCommand].run(robotController)
+            if self.commands[self.currentCommand].isFinished(): self.currentCommand += 1
+            if self.currentCommand > len(self.commands): self.isFinishedRunning = True
+        else: self.cancel()
+            
+    def schedule(self): 
+        currentAutoRoutine = self
+    def cancel(self): 
+        currentAutoRoutine = None
+        
+class AutoCommand:
+    def __init__(self, baseCommand, decorators, duration):
+        self.baseCommand = baseCommand
+        self.decorators = decorators
+        self.duration = duration
+        self.runtime = 0;
+    
+    def run(self, robotController):
+        self.runtime += 1
+        if self.runtime < self.duration:
+            if self.baseCommand == AutoCommands.DRIVE:
+                if AutoCommands.DIRECTION_FORWARD in self.decorators:
+                    robotController.driveAllWheels(100, FORWARD)
+                elif AutoCommands.DIRECTION_BACKWARD in self.decorators:
+                    robotController.driveAllWheels(100, REVERSE)
+            elif self.baseCommand == AutoCommands.TURN:
+                if AutoCommands.DIRECTION_LEFT in self.decorators:
+                    robotController.driveLeftWheel(100, REVERSE)
+                    robotController.driveRightWheel(100, FORWARD)
+                elif AutoCommands.DIRECTION_RIGHT in self.decorators:
+                    robotController.driveLeftWheel(100, FORWARD)
+                    robotController.driveRightWheel(100, REVERSE)
+            
+    def isFinished(self):
+        return self.runtime > self.duration
+
+class AutoCommands:
+    DRIVE = "Drive"
+    TURN = "Turn"
+    DIRECTION_LEFT = "Left"
+    DIRECTION_RIGHT = "Right"
+    DIRECTION_FORWARD = "Forward"
+    DIRECTION_BACKWARD = "Backward"
+
 # Helper class to manage and display cortex telemetry
 class CortexTelemetry:
     def __init__(self):
@@ -181,9 +236,13 @@ stefanProfile = ControllerProfile(controller).setDriveMode("Arcade").bindAxisOne
 currentProfile = stefanProfile
 
 # initialize helper classes
-robotController =RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True, Motor(3), False, Motor(4), False))
+robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True, Motor(3), False, Motor(4), False))
 driveContoller = DriveContoller(currentProfile, robotController)
 cortexTelemetry = CortexTelemetry().addCortexBattery()
+
+testAuto = AutoRoutine()
+testAuto.addCommand(AutoCommands.DRIVE, [AutoCommands.DIRECTION_FORWARD], 100)
+currentAutoRoutine = testAuto
 
 controller.screen.clear_screen()
 
@@ -191,4 +250,5 @@ controller.screen.clear_screen()
 while True:
     driveContoller.update()
     cortexTelemetry.displayTelemetry(brain)
+    currentAutoRoutine.runAuto(robotController)
     wait(120, MSEC)
