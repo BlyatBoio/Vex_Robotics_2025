@@ -22,7 +22,7 @@ class ControllerProfile:
         self.controller = controller
         self.axisOne = None
         self.axisTwo = None
-        self.driveMode = "arcade" # Arcade or Tank
+        self.driveMode = "Arcade" # Arcade or Tank
         self.autoRoutines = []
         self.autoRoutineTriggers = []
         self.telemetryLables = []
@@ -74,7 +74,7 @@ class ControllerProfile:
             if self.autoRoutineTriggers[i].pressing(): self.autoRoutines[i].schedule() 
         return self
     
-    def addRumbleCondition(self, condition, pattern, duration=200):
+    def addRumbleCondition(self, condition, pattern=".", duration=200):
         """ Define a condition on which the controller will vibrate with a given pattern
             :param Condition: Lambda that provides a boolean outcome for when to rumble the controller
             :param Pattern: String seqence of .'s and _'s defining length of a rumble
@@ -243,12 +243,15 @@ class DriveContoller:
 
 # Class holding an array of AutoCommands that can run through each command sequentially
 class AutoRoutine:
-    """ Class holding an array of AutoCommands that can run through each command sequentially"""
+    """ Class holding an array of AutoCommands that can run through each command sequentially
+        :param robotController: Robot Contoller object for running auto commands
+    """
 
-    def __init__(self):
+    def __init__(self, robotController):
         self.commands = []
         self.currentCommand = 0
         self.isFinishedRunning = False
+        self.robotController = robotController
     
     # Add an auto command
     def addCommand(self, baseCommand, decorators, duration):
@@ -263,14 +266,13 @@ class AutoRoutine:
         
     # Itterate over all commands until there are none left, then cancel
     # If there are no arguments, the auto never cancels as the default after cancel is an empty auto routine
-    def runAuto(self, robotController):
+    def runAuto(self):
         """ Itterate over all commands until there are none left, then cancel
-            :param robotController: Robot Controller object on which the auto routine is run
             :return AutoRoutine object: 
         """
         if len(self.commands) == 0: return
         if not self.isFinishedRunning:
-            self.commands[self.currentCommand].run(robotController)
+            self.commands[self.currentCommand].run(self.robotController)
             if self.commands[self.currentCommand].isFinished(): self.currentCommand += 1
             if self.currentCommand > len(self.commands): self.isFinishedRunning = True
         else: self.cancel()
@@ -290,7 +292,7 @@ class AutoRoutine:
             :return AutoRoutine object: 
         """
         global currentAutoRoutine
-        currentAutoRoutine = AutoRoutine()
+        currentAutoRoutine = AutoRoutine(self.robotController)
         return self
  
 # Class that takes in a base command and decroators and runs said command with said decorators       
@@ -300,6 +302,8 @@ class AutoCommand:
         :param Decorators: Array of AutoCommands values defining direction and motion
         :param Duration: Integer defining how long to run the given command
     """      
+    
+    # Shoutout vex + python for not allowing imports on the cortex but making enums an importable instead of a native capability
     DRIVE = "Drive"
     TURN = "Turn"
     DIRECTION_LEFT = "Left"
@@ -398,7 +402,7 @@ class Logger:
             :param valueSupplier: Lambda that supplies the value which will be printed
             :return Logger object:
         """
-        self.pastValues.append("")
+        self.pastValues.append(None)
         self.printValues.append([valueSupplier, lambda: (self.pastValues[len(self.pastValues)-1] != valueSupplier())])
         return self
 
@@ -431,8 +435,8 @@ driveContoller = DriveContoller(currentProfile, robotController)
 cortexTelemetry = CortexTelemetry().addCortexBattery()
 
 # define auto routine variables
-currentAutoRoutine = AutoRoutine()
-testAuto = AutoRoutine()
+currentAutoRoutine = AutoRoutine(robotController)
+testAuto = AutoRoutine(robotController)
 testAuto.addCommand(AutoCommand.DRIVE, [AutoCommand.DIRECTION_FORWARD], 100)
 
 # remove basic telemetry on the controller
@@ -440,8 +444,10 @@ controller.screen.clear_screen()
 
 # Main loop
 while True:
-    print(Timer.time)
-    driveContoller.update()
-    cortexTelemetry.displayTelemetry(brain)
-    currentAutoRoutine.runAuto(robotController)
-    wait(120, MSEC) # normalize timestep (telemetry will flicker without this)
+    try:    
+        driveContoller.update()
+        cortexTelemetry.displayTelemetry(brain)
+        currentAutoRoutine.runAuto()
+        wait(120, MSEC) # normalize timestep (telemetry will flicker without this)
+    except Exception as e:
+        print("An Error Occured: {e}") 
