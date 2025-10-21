@@ -213,12 +213,13 @@ class DriveContoller:
         self.controllerProfile.displayTelemetry() # Update telemetry display
         self.controllerProfile.checkRumbleConditions() # Check rumble conditions
         self.controllerProfile.checkConditionalTelemetry() # Check conditional telemetry
+
         
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
             # Define values for forward and turning motion directly from the axes
-            forward = self.controllerProfile.leftAxis()
-            turn = self.controllerProfile.rightAxis()
+            forward = self.controllerProfile.axisOne()
+            turn = self.controllerProfile.axisTwo()
             
             # Calculate wheel speeds and directions
             leftSpeed = forward + turn
@@ -232,8 +233,8 @@ class DriveContoller:
             
         elif(self.controllerProfile.driveMode == "Tank"):
             # Get speeds and directions directly from the axes
-            leftSpeed = self.controllerProfile.leftAxis()
-            rightSpeed = self.controllerProfile.rightAxis()
+            leftSpeed = self.controllerProfile.axisOne()
+            rightSpeed = self.controllerProfile.axisTwo()
             leftDirection = FORWARD if leftSpeed >= 0 else REVERSE
             rightDirection = FORWARD if rightSpeed >= 0 else REVERSE
             
@@ -426,7 +427,7 @@ logger = Logger()
 
 # define controller profiles
 defaultArcadeProfile = ControllerProfile(controller).setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1)
-defaultTankProfile = ControllerProfile(controller).setDriveMode(ControllerProfile.TANK).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1)
+defaultTankProfile = ControllerProfile(controller).setDriveMode(ControllerProfile.TANK).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis2)
 currentProfile = defaultArcadeProfile
 
 # initialize helper classes
@@ -450,4 +451,5 @@ while True:
         currentAutoRoutine.runAuto()
         wait(120, MSEC) # normalize timestep (telemetry will flicker without this)
     except Exception as e:
-        print("An Error Occured: {e}") 
+        print("An Error Occured:")
+        print(e)
