@@ -218,8 +218,8 @@ class DriveContoller:
     def __init__(self, controllerProfile, robotController):
         self.controllerProfile = controllerProfile
         self.robotController = robotController
-        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(100, FORWARD), self.controllerProfile.controller.buttonR1)
-        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(100, REVERSE), self.controllerProfile.controller.buttonR2)
+        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(255, FORWARD), self.controllerProfile.controller.buttonR1)
+        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(255, REVERSE), self.controllerProfile.controller.buttonR2)
     
     # Update telemetry and run drive controlls with the provided controller and profile
     def update(self):
@@ -233,8 +233,8 @@ class DriveContoller:
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
             # Define values for forward and turning motion directly from the axes
-            forward = self.controllerProfile.leftAxis()
-            turn = self.controllerProfile.rightAxis()
+            forward = self.controllerProfile.leftAxis()*2.55
+            turn = self.controllerProfile.rightAxis()*2.55
             
             # Calculate wheel speeds and directions
             leftSpeed = forward + turn
@@ -248,8 +248,8 @@ class DriveContoller:
             
         elif(self.controllerProfile.driveMode == "Tank"):
             # Get speeds and directions directly from the axes
-            leftSpeed = self.controllerProfile.leftAxis()
-            rightSpeed = self.controllerProfile.rightAxis()
+            leftSpeed = self.controllerProfile.leftAxis()*2.55
+            rightSpeed = self.controllerProfile.rightAxis()*2.55
             leftDirection = FORWARD if leftSpeed >= 0 else REVERSE
             rightDirection = FORWARD if rightSpeed >= 0 else REVERSE
             
