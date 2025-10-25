@@ -179,7 +179,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseLeft value
             :return RobotController object: 
         """
-        self.profile.leftMotor.spin(direction, (isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseLeft else -speed), PERCENT)
+        self.profile.leftMotor.spin(direction, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseLeft else -speed), PERCENT)
         return self
     
     def driveRightWheel(self, speed, direction):
@@ -188,7 +188,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseRight value
             :return RobotController object: 
         """
-        self.profile.rightMotor.spin(direction, (isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseRight else -speed), PERCENT)
+        self.profile.rightMotor.spin(direction, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseRight else -speed), PERCENT)
         return self
     
     def driveAllWheels(self, speed, direction):
@@ -206,7 +206,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseLeft and profile.reverseRight value
             :return RobotController object: 
         """
-        self.profile.spinMotor.spin((isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseSpin else -speed), direction)
+        self.profile.spinMotor.spin(direction, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseSpin else -speed))
         return self
 
 # Main drive class handles driving logic and telemetry updates
@@ -218,8 +218,8 @@ class DriveContoller:
     def __init__(self, controllerProfile, robotController):
         self.controllerProfile = controllerProfile
         self.robotController = robotController
-        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(100, FORWARD), self.controllerProfile.controller.buttonR1)
-        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(100, REVERSE), self.controllerProfile.controller.buttonR2)
+        self.controllerProfile.bindButton(lambda: self.robotController.driveSpinMotor(100, FORWARD), self.controllerProfile.controller.buttonR1)
+        self.controllerProfile.bindButton(lambda: self.robotController.driveSpinMotor(100, REVERSE), self.controllerProfile.controller.buttonR2)
     
     # Update telemetry and run drive controlls with the provided controller and profile
     def update(self):
