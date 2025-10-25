@@ -179,7 +179,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseLeft value
             :return RobotController object: 
         """
-        self.profile.leftMotor.spin(direction, (isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseLeft else -speed), PERCENT)
+        self.profile.leftMotor.spin(direction, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseLeft else -speed), PERCENT)
         return self
     
     def driveRightWheel(self, speed, direction):
@@ -188,7 +188,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseRight value
             :return RobotController object: 
         """
-        self.profile.rightMotor.spin(direction, (isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseRight else -speed), PERCENT)
+        self.profile.rightMotor.spin(direction, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseRight else -speed), PERCENT)
         return self
     
     def driveAllWheels(self, speed, direction):
@@ -206,7 +206,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseLeft and profile.reverseRight value
             :return RobotController object: 
         """
-        self.profile.spinMotor.spin((isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseSpin else -speed), direction)
+        self.profile.spinMotor.spin(direction, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseSpin else -speed))
         return self
 
 # Main drive class handles driving logic and telemetry updates
@@ -229,6 +229,8 @@ class DriveContoller:
         self.controllerProfile.checkRumbleConditions() # Check rumble conditions
         self.controllerProfile.checkConditionalTelemetry() # Check conditional telemetry
         
+        
+
         
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
@@ -466,4 +468,5 @@ while True:
         currentAutoRoutine.runAuto()
         wait(120, MSEC) # normalize timestep (telemetry will flicker without this)
     except Exception as e:
-        print("An Error Occured: {e}") 
+        print("An Error Occured:")
+        print(e)
