@@ -218,8 +218,8 @@ class DriveContoller:
     def __init__(self, controllerProfile, robotController):
         self.controllerProfile = controllerProfile
         self.robotController = robotController
-        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(255, FORWARD), self.controllerProfile.controller.buttonR1)
-        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(255, REVERSE), self.controllerProfile.controller.buttonR2)
+        self.controllerProfile.bindButton(lambda: self.robotController.driveSpinMotor(255, FORWARD), self.controllerProfile.controller.buttonR1)
+        self.controllerProfile.bindButton(lambda: self.robotController.driveSpinMotor(255, REVERSE), self.controllerProfile.controller.buttonR2)
     
     # Update telemetry and run drive controlls with the provided controller and profile
     def update(self):
