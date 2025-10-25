@@ -147,15 +147,19 @@ class ControllerProfile:
 class RobotProfile:
     """ Robot profile holding config for motors and sensors
         :param leftMotor: Vex motor located on the left side of the robot
-        :param reverseLeft: Boolean determining if the motor should spin inversed or not
+        :param reverseLeft: Boolean determining if the left motor should spin inversed or not
         :param rightMotor: Vex motor located on the right side of the robot
-        :param reverseRight: Boolean determining if the motor should spin inversed or not
+        :param reverseRight: Boolean determining if the right motor should spin inversed or not
+        :param spinMotor: Vex motor used to run the spintake
+        :param reverseSpin: Boolean determining if the spin motor should spin inversed or not
     """
-    def __init__(self, leftMotor, reverseLeft, rightMotor, reverseRight):
+    def __init__(self, leftMotor, reverseLeft, rightMotor, reverseRight, spinMotor, reverseSpin):
         self.leftMotor = leftMotor
         self.reverseLeft = reverseLeft
         self.rightMotor = rightMotor
         self.reverseRight = reverseRight
+        self.spinMotor = spinMotor
+        self.reverseSpin = reverseSpin
     
 isSlowMode = False
 def toggleSlowMode(): 
@@ -184,7 +188,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseRight value
             :return RobotController object: 
         """
-        self.profile.rightMotor.spin(direction, (isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseLeft else -speed), PERCENT)
+        self.profile.rightMotor.spin(direction, (isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseRight else -speed), PERCENT)
         return self
     
     def driveAllWheels(self, speed, direction):
@@ -196,6 +200,14 @@ class RobotController:
         self.driveLeftWheel(speed if not self.profile.reverseLeft else -speed, direction)
         self.driveRightWheel(speed if not self.profile.reverseRight else -speed, direction)
         return self
+    def driveSpinMotor(self, speed, direction):
+        """ Drive the the spintake at a given speed and direction
+            :param Speed: Value from 0 to 100 determining the % speed of both motors
+            :param Direction: Direction value that is also affected by the profile.reverseLeft and profile.reverseRight value
+            :return RobotController object: 
+        """
+        self.profile.spinMotor.spin((isSlowMode if 0.5 else 1) * (speed if not self.profile.reverseSpin else -speed), direction)
+        return self
 
 # Main drive class handles driving logic and telemetry updates
 class DriveContoller:
@@ -206,6 +218,8 @@ class DriveContoller:
     def __init__(self, controllerProfile, robotController):
         self.controllerProfile = controllerProfile
         self.robotController = robotController
+        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(100, FORWARD), self.controllerProfile.controller.buttonR1)
+        self.controllerProfile.bindButton(self.robotController.driveSpinMotor(100, REVERSE), self.controllerProfile.controller.buttonR2)
     
     # Update telemetry and run drive controlls with the provided controller and profile
     def update(self):
@@ -214,6 +228,7 @@ class DriveContoller:
         self.controllerProfile.displayTelemetry() # Update telemetry display
         self.controllerProfile.checkRumbleConditions() # Check rumble conditions
         self.controllerProfile.checkConditionalTelemetry() # Check conditional telemetry
+        
         
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
@@ -431,7 +446,7 @@ defaultTankProfile = ControllerProfile(controller).setDriveMode(ControllerProfil
 currentProfile = defaultArcadeProfile
 
 # initialize helper classes
-robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True))
+robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True, Motor(Ports.PORT3), False))
 driveContoller = DriveContoller(currentProfile, robotController)
 cortexTelemetry = CortexTelemetry().addCortexBattery()
 
