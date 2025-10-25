@@ -26,6 +26,8 @@ class ControllerProfile:
         self.telemetryLables = []
         self.telemetrySuppliers = []
         self.rumbleConditions = []
+        self.pressButtons = []
+        self.boundFunctions = []
         self.conditionalTelemetrySuppliers = []
         self.conditionalTelemetryLables = []
         self.conditionalTelemetryTriggers = []
@@ -69,8 +71,13 @@ class ControllerProfile:
             :param Button: Button which when pressed will schedule the auto routine
             :return ControllerProfile object: 
         """
-        button.pressed(callback)
+        self.boundFunctions.append(callback)
+        self.pressButtons.append(button)
         return self
+    
+    def checkButtons(self):
+        for i in range(len(self.boundFunctions)):
+            if self.pressButtons[i].pressing(): self.boundFunctions[i]()
     
     def addRumbleCondition(self, condition, pattern=".", duration=200):
         """ Define a condition on which the controller will vibrate with a given pattern
