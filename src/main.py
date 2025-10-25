@@ -147,6 +147,7 @@ class ControllerProfile:
         """
         self.checkConditionalTelemetry()
         self.checkRumbleConditions()
+        self.checkButtons()
         self.displayTelemetry()
         return self
         
