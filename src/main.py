@@ -10,6 +10,15 @@
 # Library imports
 from vex import *
 
+isSlowMode = False
+def toggleSlowMode(): 
+    global isSlowMode
+    isSlowMode = not isSlowMode
+def exitAutoRoutine():
+    global currentAutoRoutine
+    currentAutoRoutine.cancel()
+isInAuto = False
+
 # Helper config class holding telemetry and control bindings
 class ControllerProfile:
     """ Helper config class holding telemetry and control bindings
@@ -31,6 +40,18 @@ class ControllerProfile:
         self.conditionalTelemetrySuppliers = []
         self.conditionalTelemetryLables = []
         self.conditionalTelemetryTriggers = []
+
+    def copy(self):
+        newProfile = ControllerProfile(self.controller).bindAxisOne(self.axisOne).bindAxisTwo(self.axisTwo).setDriveMode(self.driveMode)
+        newProfile.telemetryLables = self.telemetryLables
+        newProfile.telemetrySuppliers = self.telemetrySuppliers
+        newProfile.rumbleConditions = self.rumbleConditions
+        newProfile.pressButtons = self.pressButtons
+        newProfile.boundFunctions = self.boundFunctions
+        newProfile.conditionalTelemetrySuppliers = self.conditionalTelemetrySuppliers
+        newProfile.conditionalTelemetryLables = self.conditionalTelemetryLables
+        newProfile.conditionalTelemetryTriggers = self.conditionalTelemetryTriggers
+        return newProfile
 
     def setDriveMode(self, mode):
         """ Set drive mode to either Arcade or tank
@@ -169,10 +190,6 @@ class RobotProfile:
         self.spinMotor = spinMotor
         self.reverseSpin = reverseSpin
     
-isSlowMode = False
-def toggleSlowMode(): 
-    global isSlowMode
-    isSlowMode = not isSlowMode
 # Helper class to control the robot's movement given a robot profile
 class RobotController:
     """ Helper class to control the robot's movement given a robot profile
@@ -236,9 +253,8 @@ class DriveContoller:
         self.controllerProfile.displayTelemetry() # Update telemetry display
         self.controllerProfile.checkRumbleConditions() # Check rumble conditions
         self.controllerProfile.checkConditionalTelemetry() # Check conditional telemetry
-        
-        
-
+    
+        if isInAuto: return # Only run drive code if the robot is not running an auto routine
         
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
@@ -310,6 +326,8 @@ class AutoRoutine:
             :return AutoRoutine object: 
         """
         global currentAutoRoutine
+        global isInAuto
+        isInAuto = True
         currentAutoRoutine = self
         return self
     # Cancel this auto routine and set the auto routine to do nothing
@@ -318,6 +336,8 @@ class AutoRoutine:
             :return AutoRoutine object: 
         """
         global currentAutoRoutine
+        global isInAuto
+        isInAuto = False
         currentAutoRoutine = AutoRoutine(self.robotController)
         return self
  
@@ -451,8 +471,9 @@ controller = Controller(PRIMARY)
 logger = Logger()
 
 # define controller profiles
-defaultArcadeProfile = ControllerProfile(controller).setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1).bindButton(lambda: toggleSlowMode(), controller.buttonB)
-defaultTankProfile = ControllerProfile(controller).setDriveMode(ControllerProfile.TANK).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1)
+defaultProfile = ControllerProfile(controller).bindAxisOne(controller.axis3).bindButton(lambda: toggleSlowMode(), controller.buttonDown).bindButton(lambda: exitAutoRoutine(), controller.buttonB)
+defaultArcadeProfile = defaultProfile.copy().setDriveMode(ControllerProfile.ARCADE).bindAxisTwo(controller.axis1)
+defaultTankProfile = defaultProfile.copy().setDriveMode(ControllerProfile.TANK).bindAxisTwo(controller.axis2)
 currentProfile = defaultArcadeProfile
 
 # initialize helper classes
