@@ -37,6 +37,7 @@ class ControllerProfile:
         self.rumbleConditions = []
         self.pressButtons = []
         self.boundFunctions = []
+        self.reBoundFunctions = []
         self.conditionalTelemetrySuppliers = []
         self.conditionalTelemetryLables = []
         self.conditionalTelemetryTriggers = []
@@ -98,7 +99,8 @@ class ControllerProfile:
     
     def checkButtons(self):
         for i in range(len(self.boundFunctions)):
-            if self.pressButtons[i].pressing(): self.boundFunctions[i]()
+            if self.pressButtons[i].pressing(): 
+                self.boundFunctions[i]()
     
     def addRumbleCondition(self, condition, pattern=".", duration=200):
         """ Define a condition on which the controller will vibrate with a given pattern
@@ -166,9 +168,9 @@ class ControllerProfile:
         """ Update all conditional checks and display telemetry
             :return ControllerProfile object: 
         """
+        self.checkButtons()
         self.checkConditionalTelemetry()
         self.checkRumbleConditions()
-        self.checkButtons()
         self.displayTelemetry()
         return self
         
@@ -231,7 +233,7 @@ class RobotController:
             :param Direction: Direction value that is also affected by the profile.reverseLeft and profile.reverseRight value
             :return RobotController object: 
         """
-        self.profile.spinMotor.spin(direction, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseSpin else -speed))
+        self.profile.spinMotor.spin_for(direction, 0.1, SECONDS, (0.5 if isSlowMode else 1) * (speed if not self.profile.reverseSpin else -speed), RPM)
         return self
 
 # Main drive class handles driving logic and telemetry updates
@@ -243,24 +245,21 @@ class DriveContoller:
     def __init__(self, controllerProfile, robotController):
         self.controllerProfile = controllerProfile
         self.robotController = robotController
-        self.controllerProfile.bindButton(lambda: self.robotController.driveSpinMotor(255, FORWARD), self.controllerProfile.controller.buttonR1)
-        self.controllerProfile.bindButton(lambda: self.robotController.driveSpinMotor(255, REVERSE), self.controllerProfile.controller.buttonR2)
-    
+        
     # Update telemetry and run drive controlls with the provided controller and profile
     def update(self):
         """ Update telemetry and run drive controlls with the provided controller and profile"""
+        global isInAuto
         self.controllerProfile.controller.screen.clear_screen() # Clear the controller screen
-        self.controllerProfile.displayTelemetry() # Update telemetry display
-        self.controllerProfile.checkRumbleConditions() # Check rumble conditions
-        self.controllerProfile.checkConditionalTelemetry() # Check conditional telemetry
+        self.controllerProfile.update()
     
         if isInAuto: return # Only run drive code if the robot is not running an auto routine
         
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
             # Define values for forward and turning motion directly from the axes
-            forward = self.controllerProfile.leftAxis()*2.55
-            turn = self.controllerProfile.rightAxis()*2.55
+            forward = self.controllerProfile.axisOne()*-2.55
+            turn = self.controllerProfile.axisTwo()*-2.55
             
             # Calculate wheel speeds and directions
             leftSpeed = forward + turn
@@ -271,11 +270,11 @@ class DriveContoller:
             # Apply speeds and directions to motors
             self.robotController.driveLeftWheel(abs(leftSpeed), leftDirection)
             self.robotController.driveRightWheel(abs(rightSpeed), rightDirection)
-            
+
         elif(self.controllerProfile.driveMode == "Tank"):
             # Get speeds and directions directly from the axes
-            leftSpeed = self.controllerProfile.leftAxis()*2.55
-            rightSpeed = self.controllerProfile.rightAxis()*2.55
+            leftSpeed = (self.controllerProfile.axisOne())*2.55
+            rightSpeed = (self.controllerProfile.axisTwo())*2.55
             leftDirection = FORWARD if leftSpeed >= 0 else REVERSE
             rightDirection = FORWARD if rightSpeed >= 0 else REVERSE
             
@@ -469,15 +468,15 @@ brain = Brain()
 # nescesary objects
 controller = Controller(PRIMARY)
 logger = Logger()
+robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True, Motor(Ports.PORT3), True))
 
 # define controller profiles
-defaultProfile = ControllerProfile(controller).bindAxisOne(controller.axis3).bindButton(lambda: toggleSlowMode(), controller.buttonDown).bindButton(lambda: exitAutoRoutine(), controller.buttonB)
-defaultArcadeProfile = defaultProfile.copy().setDriveMode(ControllerProfile.ARCADE).bindAxisTwo(controller.axis1)
-defaultTankProfile = defaultProfile.copy().setDriveMode(ControllerProfile.TANK).bindAxisTwo(controller.axis2)
+defaultProfile = ControllerProfile(controller).bindButton(lambda: toggleSlowMode(), controller.buttonDown).bindButton(lambda: exitAutoRoutine(), controller.buttonB).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonR1).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonR2)
+defaultArcadeProfile = defaultProfile.copy().setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1)
+defaultTankProfile = defaultProfile.copy().setDriveMode(ControllerProfile.TANK).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis2)
 currentProfile = defaultArcadeProfile
 
 # initialize helper classes
-robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True, Motor(Ports.PORT3), False))
 driveContoller = DriveContoller(currentProfile, robotController)
 cortexTelemetry = CortexTelemetry().addCortexBattery()
 
@@ -495,7 +494,8 @@ while True:
         driveContoller.update()
         cortexTelemetry.displayTelemetry(brain)
         currentAutoRoutine.runAuto()
-        wait(120, MSEC) # normalize timestep (telemetry will flicker without this)
+        #Motor(Ports.PORT3).spin(FORWARD, 255)
+        wait(5, MSEC) # normalize timestep (telemetry will flicker without this)
     except Exception as e:
         print("An Error Occured:")
         print(e)
