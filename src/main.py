@@ -258,8 +258,8 @@ class DriveContoller:
         # Drive logic
         if(self.controllerProfile.driveMode == "Arcade"):
             # Define values for forward and turning motion directly from the axes
-            forward = self.controllerProfile.axisOne()*-2.55
-            turn = self.controllerProfile.axisTwo()*-2.55
+            forward = self.controllerProfile.axisOne()*2.55
+            turn = self.controllerProfile.axisTwo()*2.55
             
             # Calculate wheel speeds and directions
             leftSpeed = forward + turn
