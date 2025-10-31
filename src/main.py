@@ -66,6 +66,8 @@ class ControllerProfile:
         self.controller = controller
         self.axisOne = None
         self.axisTwo = None
+        self.isAxisOneAbsolute = False
+        self.isAxisTwoAbsolute = False
         self.driveMode = "Arcade" # Arcade or Tank
         self.telemetryLables = []
         self.telemetrySuppliers = []
@@ -115,6 +117,14 @@ class ControllerProfile:
             :return ControllerProfile object: 
         """
         self.axisTwo = lambda: axis.position()
+        return self
+    
+    def setAxisOneAbsolute(self):
+        self.isAxisOneAbsolute = True
+        return self
+    
+    def setAxisTwoAbsolute(self):
+        self.isAxisTwoAbsolute = True
         return self
     
     def bindAutoRoutine(self, autoRoutine, button):
@@ -320,6 +330,14 @@ class DriveContoller:
             forward = self.controllerProfile.axisOne()*2.55
             turn = self.controllerProfile.axisTwo()*2.55
             
+            if self.controllerProfile.isAxisOneAbsolute:
+                if forward > 0: forward = 255
+                elif forward < 0: forward = -255
+                
+            if self.controllerProfile.isAxisTwoAbsolute:
+                if turn > 0: turn = 255
+                elif turn < 0: turn = -255
+            
             # Calculate wheel speeds and directions
             leftSpeed = forward + turn
             rightSpeed = forward - turn
@@ -332,8 +350,17 @@ class DriveContoller:
 
         elif(self.controllerProfile.driveMode == "Tank"):
             # Get speeds and directions directly from the axes
-            leftSpeed = (self.controllerProfile.axisOne())*2.55
-            rightSpeed = (self.controllerProfile.axisTwo())*2.55
+            leftSpeed = self.controllerProfile.axisOne()*2.55
+            rightSpeed = self.controllerProfile.axisTwo()*2.55
+                        
+            if self.controllerProfile.isAxisOneAbsolute:
+                if leftSpeed > 0: leftSpeed = 255
+                elif leftSpeed < 0: leftSpeed = -255
+                
+            if self.controllerProfile.isAxisTwoAbsolute:
+                if rightSpeed > 0: rightSpeed = 255
+                elif rightSpeed < 0: rightSpeed = -255
+            
             leftDirection = FORWARD if leftSpeed >= 0 else REVERSE
             rightDirection = FORWARD if rightSpeed >= 0 else REVERSE
             
@@ -537,7 +564,7 @@ robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(
 
 # define controller profiles
 
-BrianProfile = ControllerProfile(controller, "Brian").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonL2, False).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonL1, False)
+BrianProfile = ControllerProfile(controller, "Brian").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonL2, False).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonL1, False).setAxisTwoAbsolute()
 OzzyProfile = ControllerProfile(controller, "Ozzy").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis2).bindAxisTwo(controller.axis4).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonR2, False).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonR1, False).bindButton(lambda: toggleSlowMode(), controller.buttonL2)
 
 currentProfile = BrianProfile
