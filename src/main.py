@@ -10,14 +10,49 @@
 # Library imports
 from vex import *
 
+controllerProfiles = []
+controllerProfileNames = []
+currentControllerProfile = 0
+hasButtonRBeenPressed = False
+hasButtonLBeenPressed = False
+hasSelectedProfile = False
 isSlowMode = False
+isInAuto = False
+clockCyclesPast = 0
+
 def toggleSlowMode(): 
     global isSlowMode
     isSlowMode = not isSlowMode
 def exitAutoRoutine():
     global currentAutoRoutine
     currentAutoRoutine.cancel()
-isInAuto = False
+def getCurProfileName():
+    return controllerProfileNames[currentControllerProfile]
+def runSelectProfile():
+    global controller
+    global currentControllerProfile
+    global controllerProfiles
+    global hasButtonRBeenPressed
+    global hasButtonLBeenPressed
+    global hasSelectedProfile
+    global driveContoller
+    
+    if controller.buttonRight.pressing(): 
+        if not hasButtonRBeenPressed: 
+            currentControllerProfile +=1
+        hasButtonRBeenPressed = True
+    else: hasButtonRBeenPressed = False
+    if controller.buttonLeft.pressing(): 
+        if not hasButtonLBeenPressed: 
+            currentControllerProfile -=1
+        hasButtonLBeenPressed = True
+    else: hasButtonLBeenPressed = False
+        
+    if currentControllerProfile >= len(controllerProfiles): currentControllerProfile = 0
+    if currentControllerProfile < 0: currentControllerProfile = len(controllerProfiles)-1
+    driveContoller.controllerProfile = controllerProfiles[currentControllerProfile]
+
+    if controller.buttonA.pressing(): hasSelectedProfile = True
 
 # Helper config class holding telemetry and control bindings
 class ControllerProfile:
@@ -27,7 +62,7 @@ class ControllerProfile:
     ARCADE = "Arcade"
     TANK = "Tank"
     
-    def __init__(self, controller):
+    def __init__(self, controller, name):
         self.controller = controller
         self.axisOne = None
         self.axisTwo = None
@@ -37,13 +72,22 @@ class ControllerProfile:
         self.rumbleConditions = []
         self.pressButtons = []
         self.boundFunctions = []
+        self.onPressOnlys = []
+        self.buttonsHaveBeenPressed = []
         self.reBoundFunctions = []
         self.conditionalTelemetrySuppliers = []
         self.conditionalTelemetryLables = []
         self.conditionalTelemetryTriggers = []
+        self.name = name
+        self.addConditionalTelemetry("Current Profile: ", lambda: (not hasSelectedProfile), lambda: getCurProfileName())
+        self.addConditionalTelemetry("Selected Profile", lambda: (hasSelectedProfile), lambda: getCurProfileName())
+        global controllerProfiles
+        global controllerProfileNames
+        controllerProfiles.append(self)
+        controllerProfileNames.append(self.name)
 
     def copy(self):
-        newProfile = ControllerProfile(self.controller).bindAxisOne(self.axisOne).bindAxisTwo(self.axisTwo).setDriveMode(self.driveMode)
+        newProfile = ControllerProfile(self.controller, self.name).bindAxisOne(self.axisOne).bindAxisTwo(self.axisTwo).setDriveMode(self.driveMode)
         newProfile.telemetryLables = self.telemetryLables
         newProfile.telemetrySuppliers = self.telemetrySuppliers
         newProfile.rumbleConditions = self.rumbleConditions
@@ -87,7 +131,7 @@ class ControllerProfile:
         self.bindButton(lambda: autoRoutine.schedule(), button)
         return self
     
-    def bindButton(self, callback, button):
+    def bindButton(self, callback, button, onPressOnly=True):
         """ Add a binding for a button and a given lambda
             :param Callback: lambda to be bound to the provided button
             :param Button: Button which when pressed will schedule the auto routine
@@ -95,6 +139,8 @@ class ControllerProfile:
         """
         self.boundFunctions.append(callback)
         self.pressButtons.append(button)
+        self.onPressOnlys.append(onPressOnly)
+        self.buttonsHaveBeenPressed.append(False)
         return self
     
     def checkButtons(self):
@@ -116,6 +162,7 @@ class ControllerProfile:
         """ Check all added rumble conditions and rumble the controller if a condition is met
             :return ControllerProfile object: 
         """
+        #TDOD: Re-write button system as a class
         for condition in self.rumbleConditions:
             if(condition[0]()):
                 self.controller.rumble(condition[1])
@@ -159,6 +206,7 @@ class ControllerProfile:
         """ Display all telemetry on the controller screen
             :return ControllerProfile object: 
         """
+        self.controller.screen.clear_screen() # Clear the controller screen
         for i in range(len(self.telemetryLables)):
             self.controller.screen.set_cursor(1, i+1)
             self.controller.screen.print(self.telemetryLables[i] + " " + str(self.telemetrySuppliers[i]()))
@@ -168,10 +216,11 @@ class ControllerProfile:
         """ Update all conditional checks and display telemetry
             :return ControllerProfile object: 
         """
+        global clockCyclesPast
         self.checkButtons()
         self.checkConditionalTelemetry()
         self.checkRumbleConditions()
-        self.displayTelemetry()
+        if (clockCyclesPast % 20) == 0: self.displayTelemetry()
         return self
         
 # Robot profile holding config for motors and sensors
@@ -250,7 +299,6 @@ class DriveContoller:
     def update(self):
         """ Update telemetry and run drive controlls with the provided controller and profile"""
         global isInAuto
-        self.controllerProfile.controller.screen.clear_screen() # Clear the controller screen
         self.controllerProfile.update()
     
         if isInAuto: return # Only run drive code if the robot is not running an auto routine
@@ -471,9 +519,12 @@ logger = Logger()
 robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(Ports.PORT2), True, Motor(Ports.PORT3), True))
 
 # define controller profiles
-defaultProfile = ControllerProfile(controller).bindButton(lambda: toggleSlowMode(), controller.buttonDown).bindButton(lambda: exitAutoRoutine(), controller.buttonB).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonR1).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonR2)
-defaultArcadeProfile = defaultProfile.copy().setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1)
-defaultTankProfile = defaultProfile.copy().setDriveMode(ControllerProfile.TANK).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis2)
+
+BrianProfile = ControllerProfile(controller, "Brian").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonL2).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonL1)
+BrianProfile = ControllerProfile(controller, "Ozzy").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis1).bindAxisTwo(controller.axis3).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonR2).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonR1).bindButton(lambda: toggleSlowMode(), controller.buttonL2)
+defaultArcadeProfile = ControllerProfile(controller, "Arcade").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1)
+defaultTankProfile = ControllerProfile(controller, "Tank").setDriveMode(ControllerProfile.TANK).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis2)
+
 currentProfile = defaultArcadeProfile
 
 # initialize helper classes
@@ -490,12 +541,12 @@ controller.screen.clear_screen()
 
 # Main loop
 while True:
-    try:    
+    try:   
+        clockCyclesPast += 1 
+        if not hasSelectedProfile: runSelectProfile() # allow drivers to select their controller proifiles
         driveContoller.update()
         cortexTelemetry.displayTelemetry(brain)
         currentAutoRoutine.runAuto()
-        #Motor(Ports.PORT3).spin(FORWARD, 255)
-        wait(5, MSEC) # normalize timestep (telemetry will flicker without this)
     except Exception as e:
         print("An Error Occured:")
         print(e)
