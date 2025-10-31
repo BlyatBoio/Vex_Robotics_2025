@@ -70,11 +70,7 @@ class ControllerProfile:
         self.telemetryLables = []
         self.telemetrySuppliers = []
         self.rumbleConditions = []
-        self.pressButtons = []
-        self.boundFunctions = []
-        self.onPressOnlys = []
-        self.buttonsHaveBeenPressed = []
-        self.reBoundFunctions = []
+        self.boundButtons = []
         self.conditionalTelemetrySuppliers = []
         self.conditionalTelemetryLables = []
         self.conditionalTelemetryTriggers = []
@@ -91,8 +87,7 @@ class ControllerProfile:
         newProfile.telemetryLables = self.telemetryLables
         newProfile.telemetrySuppliers = self.telemetrySuppliers
         newProfile.rumbleConditions = self.rumbleConditions
-        newProfile.pressButtons = self.pressButtons
-        newProfile.boundFunctions = self.boundFunctions
+        newProfile.boundButtons = self.boundButtons
         newProfile.conditionalTelemetrySuppliers = self.conditionalTelemetrySuppliers
         newProfile.conditionalTelemetryLables = self.conditionalTelemetryLables
         newProfile.conditionalTelemetryTriggers = self.conditionalTelemetryTriggers
@@ -137,16 +132,12 @@ class ControllerProfile:
             :param Button: Button which when pressed will schedule the auto routine
             :return ControllerProfile object: 
         """
-        self.boundFunctions.append(callback)
-        self.pressButtons.append(button)
-        self.onPressOnlys.append(onPressOnly)
-        self.buttonsHaveBeenPressed.append(False)
+        self.boundButtons.append(boundButton(button, callback, onPressOnly))
         return self
     
     def checkButtons(self):
-        for i in range(len(self.boundFunctions)):
-            if self.pressButtons[i].pressing(): 
-                self.boundFunctions[i]()
+        for i in range(len(self.boundButtons)):
+            self.boundButtons[i].update()
     
     def addRumbleCondition(self, condition, pattern=".", duration=200):
         """ Define a condition on which the controller will vibrate with a given pattern
@@ -222,6 +213,20 @@ class ControllerProfile:
         self.checkRumbleConditions()
         if (clockCyclesPast % 20) == 0: self.displayTelemetry()
         return self
+      
+class boundButton:
+    def __init__(self, button, callback, onPressOnly):
+        self.button = button
+        self.callback = callback
+        self.onPressOnly = onPressOnly
+        self.hasBeenPressed = False
+    
+    def update(self):
+        if self.button.pressing():
+            if not self.onPressOnly or not self.hasBeenPressed: self.callback()
+            self.hasBeenPressed = True
+        else: self.hasBeenPressed = False
+        
         
 # Robot profile holding config for motors and sensors
 class RobotProfile:
@@ -520,12 +525,10 @@ robotController = RobotController(RobotProfile(Motor(Ports.PORT1), False, Motor(
 
 # define controller profiles
 
-BrianProfile = ControllerProfile(controller, "Brian").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonL2).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonL1)
-BrianProfile = ControllerProfile(controller, "Ozzy").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis1).bindAxisTwo(controller.axis3).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonR2).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonR1).bindButton(lambda: toggleSlowMode(), controller.buttonL2)
-defaultArcadeProfile = ControllerProfile(controller, "Arcade").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1)
-defaultTankProfile = ControllerProfile(controller, "Tank").setDriveMode(ControllerProfile.TANK).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis2)
+BrianProfile = ControllerProfile(controller, "Brian").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis3).bindAxisTwo(controller.axis1).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonL2, False).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonL1, False)
+OzzyProfile = ControllerProfile(controller, "Ozzy").setDriveMode(ControllerProfile.ARCADE).bindAxisOne(controller.axis2).bindAxisTwo(controller.axis4).bindButton(lambda: robotController.driveSpinMotor(255, FORWARD), controller.buttonR2, False).bindButton(lambda: robotController.driveSpinMotor(255, REVERSE), controller.buttonR1, False).bindButton(lambda: toggleSlowMode(), controller.buttonL2)
 
-currentProfile = defaultArcadeProfile
+currentProfile = BrianProfile
 
 # initialize helper classes
 driveContoller = DriveContoller(currentProfile, robotController)
