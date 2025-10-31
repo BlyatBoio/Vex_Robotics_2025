@@ -213,8 +213,14 @@ class ControllerProfile:
         self.checkRumbleConditions()
         if (clockCyclesPast % 20) == 0: self.displayTelemetry()
         return self
-      
+   
+# Subclass uesd to bind callback lamdbas to the press of a button   
 class boundButton:
+    """ Subclass uesd to bind callback lamdbas to the press of a button   
+        :param Button: The vex controller button object to be bound to the callback
+        :param Callback: Lambda to be bound to the button press
+        :param onPressOnly: if the callback should be called while the button is held or only on the initial press
+    """
     def __init__(self, button, callback, onPressOnly):
         self.button = button
         self.callback = callback
@@ -222,11 +228,11 @@ class boundButton:
         self.hasBeenPressed = False
     
     def update(self):
+        """Handle the calling and interpretation of button presses provided to the boundButton"""
         if self.button.pressing():
             if not self.onPressOnly or not self.hasBeenPressed: self.callback()
             self.hasBeenPressed = True
         else: self.hasBeenPressed = False
-        
         
 # Robot profile holding config for motors and sensors
 class RobotProfile:
@@ -404,6 +410,7 @@ class AutoCommand:
     # Shoutout vex + python for not allowing imports on the cortex but making enums an importable instead of a native capability
     DRIVE = "Drive"
     TURN = "Turn"
+    INTAKE = "Intake"
     DIRECTION_LEFT = "Left"
     DIRECTION_RIGHT = "Right"
     DIRECTION_FORWARD = "Forward"
@@ -424,16 +431,21 @@ class AutoCommand:
         if self.runtime < self.duration:
             if self.baseCommand == AutoCommand.DRIVE:
                 if AutoCommand.DIRECTION_FORWARD in self.decorators:
-                    robotController.driveAllWheels(100, FORWARD)
+                    robotController.driveAllWheels(255, FORWARD)
                 elif AutoCommand.DIRECTION_BACKWARD in self.decorators:
-                    robotController.driveAllWheels(100, REVERSE)
+                    robotController.driveAllWheels(255, REVERSE)
             elif self.baseCommand == AutoCommand.TURN:
                 if AutoCommand.DIRECTION_LEFT in self.decorators:
-                    robotController.driveLeftWheel(100, REVERSE)
-                    robotController.driveRightWheel(100, FORWARD)
+                    robotController.driveLeftWheel(255, REVERSE)
+                    robotController.driveRightWheel(255, FORWARD)
                 elif AutoCommand.DIRECTION_RIGHT in self.decorators:
-                    robotController.driveLeftWheel(100, FORWARD)
-                    robotController.driveRightWheel(100, REVERSE)
+                    robotController.driveLeftWheel(255, FORWARD)
+                    robotController.driveRightWheel(255, REVERSE)
+            elif self.baseCommand == AutoCommand.INTAKE:
+                if AutoCommand.DIRECTION_FORWARD in self.decorators:
+                    robotController.driveSpinMotor(255, FORWARD)
+                elif AutoCommand.DIRECTION_BACKWARD in self.decorators:
+                    robotController.driveSpinMotor(255, REVERSE)
             
     # Return whether or not the command's duration has exceeded the runtime
     def isFinished(self):
